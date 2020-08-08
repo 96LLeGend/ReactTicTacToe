@@ -25,51 +25,16 @@ function Square(props){
 }
 
 class Board extends React.Component {
-  constructor(props){
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null),
-      xIsNext: true,
-      winner: null,
-    };
-  }
-
-  handleClick(i){
-    if(this.state.winner){
-      return;
-    }
-
-    //Use a copy of the list to avoid mutation
-    //1. Avoiding direct data mutation lets us keep previous versions
-    //of the game’s history intact, and reuse them later
-    //2. Detecting Changes: just compare the reference we will now data
-    //Has been changed, instead before which need to have a existing object
-    //to compare, this is important for React ROM to update components
-    const squares = this.state.squares.slice();
-    squares[i] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({
-      squares: squares,
-      xIsNext: !this.state.xIsNext,
-    });
-  }
 
   renderSquare(i) {
-    return <Square value={this.state.squares[i]}
-    onClick={() => this.handleClick(i)}/>;
+    return <Square value={this.props.squares[i]}
+    onClick={() => this.props.onClick(i)}/>;
   }
 
   render() {
-    this.state.winner = calculateWinner(this.state.squares);
-    let status;
-    if(this.state.winner){
-      status = 'Winner: ' + this.state.winner;
-    } else{
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
-    }
 
     return (
       <div>
-        <div className="status">{status}</div>
         <div className="board-row">
           {this.renderSquare(0)}
           {this.renderSquare(1)}
@@ -91,15 +56,84 @@ class Board extends React.Component {
 }
 
 class Game extends React.Component {
+  constructor(props){
+      super(props);
+      this.state = {
+        history: [{
+          squares: Array(9).fill(null),
+        }],
+        xIsNext : true,
+        winner: null,
+        stepNumber: 0,
+      };
+  }
+
+  jumpTo(step){
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    })
+  }
+
+  handleClick(i){
+
+
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
+    const current = history [history.length - 1];
+
+    if(this.state.winner){
+      return;
+    }
+
+    //Use a copy of the list to avoid mutation
+    //1. Avoiding direct data mutation lets us keep previous versions
+    //of the game’s history intact, and reuse them later
+    //2. Detecting Changes: just compare the reference we will now data
+    //Has been changed, instead before which need to have a existing object
+    //to compare, this is important for React ROM to update components
+    const squares = current.squares.slice();
+    squares[i] = this.state.xIsNext ? 'X' : 'O';
+    this.setState({
+      history : history.concat([{
+        squares : squares,
+      }]),
+      xIsNext: !this.state.xIsNext,
+      stepNumber: history.length,
+    });
+  }
+
   render() {
+    const history = this.state.history;
+    const current = history[this.state.stepNumber];
+    this.state.winner = calculateWinner(current.squares);
+
+    const moves = history.map((step, move) => {
+      const desc = move ? 'Go to move #' + move : 'Go to game start';
+      return(
+        <li key={move}>
+          <button onClick={() => this.jumpTo(move)}>{desc}</button>
+        </li>
+      )
+    })
+
+    let status;
+    if (this.state.winner){
+      status = 'Winner: ' + this.state.winner;
+    } else {
+      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+    }
+
     return (
       <div className="game">
         <div className="game-board">
-          <Board />
+          <Board
+            squares = {current.squares}
+            onClick = {(i) => this.handleClick(i)}
+            />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div>{status}</div>
+          <ol>{moves}</ol>
         </div>
       </div>
     );
